@@ -17,8 +17,8 @@ mqtt:
   port: 8883
   # CA certificate copied from /greengrass/v2/work/aws.greengrass.clientdevices.Auth/ca.pem
   certificate: /config/certificates/ca.pem
-  client_key: /config/certificates/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-private.pem.key
-  client_cert: /config/certificates/dc536a53c3fcbce54833f9d90ab3ef1bd54523b4f371f60a811c0970dc8d4d82-certificate.pem.crt
+  client_key: /config/certificates/5ea21074803efb854ed5c929cab35fc858d6c294445099c65e4ec2b0df82624b-private.pem.key
+  client_cert: /config/certificates/5ea21074803efb854ed5c929cab35fc858d6c294445099c65e4ec2b0df82624b-certificate.pem.crt
   client_id: home-assistant
   tls_insecure: false
   protocol: '3.1.1'
