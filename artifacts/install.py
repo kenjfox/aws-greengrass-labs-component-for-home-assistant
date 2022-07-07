@@ -28,6 +28,7 @@ if len(sys.argv) == 1:
 
 # Get the secure configuration from Secret Manager
 secret = get_secret(sys.argv[1])
+#print('secret.items: {}'.format(secret.length()))
 
 os.chdir('config')
 print('getcwd: ', os.getcwd())
