@@ -32,18 +32,19 @@ def get_newest_component_version(component_name):
 
     return response['componentVersions'][0]['componentVersion']
 
-def get_deployment_components(name):
+def get_deployment_components_for_core_device():
     """ Gets the details of the existing deployment """
+    thing_arn = 'arn:aws:iot:{}:{}:thing/{}'.format(gdk_config.region(), ACCOUNT, args.coreDeviceThingName)
     try:
-        response = greengrassv2_client.list_deployments()
+        response = greengrassv2_client.list_deployments(targetArn=thing_arn,historyFilter='LATEST_ONLY')
     except Exception as e:
         print('Failed to list deployments\nException: {}'.format(e))
         sys.exit(1)
 
-    components = []
+    components = {}
 
     for deployment in response['deployments']:
-        if 'deploymentName' in deployment.keys() and deployment['deploymentName'] == name:
+        if 'deploymentStatus' in deployment.keys() and deployment['deploymentStatus'] != 'CANCELLED':
 
             try:
                 response = greengrassv2_client.get_deployment(deploymentId=deployment['deploymentId'])
@@ -55,8 +56,16 @@ def get_deployment_components(name):
 
     return components
 
+
 def update_deployment_components(components):
     """ Updates the existing components to the desired versions """
+     # Add or update our component to the specified version
+    if gdk_config.name() not in components:
+        print('Adding {} {} to the deployment'.format(gdk_config.name(), args.version))
+        components.update({gdk_config.name(): {'componentVersion': args.version}})
+    else:
+        print('Updating deployment with {} {}'.format(gdk_config.name(), args.version))
+        components.update({gdk_config.name(): {'componentVersion': args.version}})
 
     # If Docker Application manager is not in the deployment, add the latest version
     if COMPONENT_DOCKER_APPLICATION_MANAGER not in components:
@@ -68,22 +77,21 @@ def update_deployment_components(components):
     if COMPONENT_SECRET_MANAGER not in components:
         version = get_newest_component_version(COMPONENT_SECRET_MANAGER)
         print('Adding {} {} to the deployment'.format(COMPONENT_SECRET_MANAGER, version))
+        # Ensure that Secret Manager is configured for the secret
+        components.update({COMPONENT_SECRET_MANAGER: {
+            'componentVersion': version,
+            'configurationUpdate': {'merge': '{"cloudSecrets":[{"arn":"' + secret_value['ARN'] + '"}]}'}}
+        })
     else:
         # If it's already in the deployment, use the current version
         version = components[COMPONENT_SECRET_MANAGER]['componentVersion']
+        # Ensure that Secret Manager is configured for the secret
+        components.update({COMPONENT_SECRET_MANAGER: {
+            'componentVersion': version,
+            'configurationUpdate': {'merge': '{"cloudSecrets":[{"arn":"' + secret_value['ARN'] + '"}]}'}}
+        })
 
-    # Ensure that Secret Manager is configured for the secret
-    components.update({COMPONENT_SECRET_MANAGER: {
-        'componentVersion': version,
-        'configurationUpdate': {'merge': '{"cloudSecrets":[{"arn":"' + secret_value['ARN'] + '"}]}'}}
-    })
 
-    # Add or update our component to the specified version
-    if gdk_config.name() not in components:
-        print('Adding {} {} to the deployment'.format(gdk_config.name(), args.version))
-    else:
-        print('Updating deployment with {} {}'.format(gdk_config.name(), args.version))
-    components.update({gdk_config.name(): {'componentVersion': args.version}})
 
 def create_deployment(name, components):
     """ Creates a deployment of the component to the given Greengrass core device """
@@ -116,6 +124,7 @@ def wait_for_deployment_to_finish(deploy_id):
 
     if deployment_status == 'COMPLETED':
         print('Deployment completed successfully in {:.1f} seconds'.format(time.time() - snapshot))
+        print(response);
     elif deployment_status == 'ACTIVE':
         print('Deployment timed out')
         sys.exit(1)
@@ -136,12 +145,12 @@ greengrassv2_client = boto3.client('greengrassv2', region_name=gdk_config.region
 secret = Secret(gdk_config.region())
 secret_value = secret.get()
 
-print('Deploying version {} to {}'.format(args.version, args.coreDeviceThingName))
+print('Deploying version {} to {} '.format(args.version, args.coreDeviceThingName))
 
 deployment_name='Deployment for {}'.format(args.coreDeviceThingName)
 
 # Get the components of the existing deployment (if the deployment already exists)
-deployment_components = get_deployment_components(deployment_name)
+deployment_components = get_deployment_components_for_core_device()
 
 # Update the components of the existing deployment (or create if the deployment doesn't already exist)
 update_deployment_components(deployment_components)

@@ -1,6 +1,7 @@
 *.pem
 *.crt
 *.key
+*.log
 greengrass-build
 __pycache__
 .coverage
