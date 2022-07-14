@@ -9,3 +9,26 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host
+  
+  rtsp-to-web:
+    image: ghcr.io/deepch/rtsptoweb:latest 
+    volumes:
+      - ./config/rtsp-to-web:/config
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    environment:
+      - TZ=America/Los_Angeles
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce
+    restart: always
+    ports:
+      - "9000:9000/tcp"
+    environment:
+      - TZ=America/Los_Angeles
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config/portainer:/data
+    network_mode: host
